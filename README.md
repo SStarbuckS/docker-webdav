@@ -28,28 +28,29 @@ When using unencrypted HTTP, use `Digest` authentication (instead of `Basic`) to
 To make sure your data doesn't get deleted, you'll probably want to create a persistent storage volume (`-v vol-webdav:/var/lib/dav`) or bind mount a directory (`-v /path/to/directory:/var/lib/dav`):
 
 ```
-docker run --restart always -v /srv/dav:/var/lib/dav \
+docker run --restart unless-stopped -v /srv/dav:/var/lib/dav/data \
     -e AUTH_TYPE=Digest -e USERNAME=alice -e PASSWORD=secret1234 \
-    --publish 80:80 -d bytemark/webdav
+    --publish 80:80 -d sstarbucks/webdav:latest
 
 ```
 
 #### Via Docker Compose:
 
 ```
-version: '3'
 services:
   webdav:
-    image: bytemark/webdav
-    restart: always
+    image: sstarbucks/webdav:latest
+    restart: unless-stopped
     ports:
       - "80:80"
     environment:
       AUTH_TYPE: Digest
       USERNAME: alice
       PASSWORD: secret1234
+      PUID: 1000
+      PGID: 1000
     volumes:
-      - /srv/dav:/var/lib/dav
+      - /srv/dav:/var/lib/dav/data
 
 ```
 ### Secure WebDAV with SSL
@@ -59,7 +60,7 @@ We recommend you use a reverse proxy (eg, Traefik) to handle SSL certificates. Y
 If you're happy with a self-signed SSL certificate, specify `-e SSL_CERT=selfsigned` and the container will generate one for you.
 
 ```
-docker run --restart always -v /srv/dav:/var/lib/dav \
+docker run --restart always -v /srv/dav:/var/lib/dav/data \
     -e AUTH_TYPE=Basic -e USERNAME=test -e PASSWORD=test \
     -e SSL_CERT=selfsigned --publish 443:443 -d bytemark/webdav
 
@@ -104,4 +105,6 @@ All environment variables are optional. You probably want to at least specify `U
 * **`PASSWORD`**: Authenticate with this password (and the username above). This is ignored if you bind mount your own authentication file to `/user.passwd`.
 * **`ANONYMOUS_METHODS`**: Comma-separated list of HTTP request methods (eg, `GET,POST,OPTIONS,PROPFIND`). Clients can use any method you specify here without authentication. Set to `ALL` to disable authentication. The default is to disallow any anonymous access.
 * **`SSL_CERT`**: Set to `selfsigned` to generate a self-signed certificate and enable Apache's SSL module. If you specify `SERVER_NAMES`, the first domain is set as the Common Name.
+* **`PUID`**: file owner's UID of `/var/lib/dav`
+* **`PGID`**: file owner's GID of `/var/lib/dav`
 
